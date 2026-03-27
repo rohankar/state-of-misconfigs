@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The State of Security Misconfigurations — Research Report 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{
+  --bg:#080809;
+  --bg2:#0f0f11;
+  --bg3:#161618;
+  --bg4:#1e1e21;
+  --border:#2a2a2e;
+  --border2:#3a3a3f;
+  --text:#e8e6e0;
+  --text2:#9a9891;
+  --text3:#5a5856;
+  --red:#e24b4a;
+  --red-dim:#3d1717;
+  --red-mid:#7a2222;
+  --amber:#ef9f27;
+  --amber-dim:#3a2508;
+  --green:#639922;
+  --green-dim:#1a2e08;
+  --blue:#4a8fd4;
+  --blue-dim:#0d2240;
+  --teal:#1d9e75;
+  --teal-dim:#083020;
+  --accent:#e24b4a;
+  --mono:'IBM Plex Mono',monospace;
+  --serif:'DM Serif Display',serif;
+  --sans:'Syne',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.7;
+  min-height:100vh;
+}
+
+/* ── Noise overlay ── */
+body::before{
+  content:'';
+  position:fixed;
+  inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity:.028;
+  pointer-events:none;
+  z-index:0;
+}
+
+/* ── Layout ── */
+.layout{display:flex;min-height:100vh;position:relative;z-index:1}
+
+/* ── Sidebar nav ── */
+nav{
+  width:220px;
+  flex-shrink:0;
+  position:sticky;
+  top:0;
+  height:100vh;
+  overflow-y:auto;
+  border-right:1px solid var(--border);
+  padding:2rem 0;
+  display:flex;
+  flex-direction:column;
+}
+.nav-brand{
+  padding:0 1.4rem 1.5rem;
+  border-bottom:1px solid var(--border);
+  margin-bottom:1.2rem;
+}
+.nav-brand .logo{
+  font-family:var(--mono);
+  font-size:10px;
+  font-weight:500;
+  color:var(--red);
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  margin-bottom:6px;
+}
+.nav-brand .tagline{font-size:11px;color:var(--text3);line-height:1.4}
+nav ul{list-style:none;padding:0 .8rem}
+nav ul li{margin-bottom:2px}
+nav ul li a{
+  display:block;
+  padding:5px .6rem;
+  font-size:11px;
+  font-family:var(--mono);
+  color:var(--text3);
+  text-decoration:none;
+  border-radius:4px;
+  transition:color .15s,background .15s;
+  letter-spacing:.03em;
+}
+nav ul li a:hover{color:var(--text);background:var(--bg3)}
+nav ul li a.active{color:var(--red);background:var(--red-dim)}
+.nav-section-label{
+  font-size:9px;
+  font-family:var(--mono);
+  color:var(--text3);
+  letter-spacing:.15em;
+  text-transform:uppercase;
+  padding:1rem .6rem .3rem;
+}
+.nav-footer{
+  margin-top:auto;
+  padding:1.2rem 1.4rem 0;
+  border-top:1px solid var(--border);
+  font-size:10px;
+  font-family:var(--mono);
+  color:var(--text3);
+  line-height:1.6;
+}
+
+/* ── Main content ── */
+main{flex:1;max-width:860px;padding:0 3.5rem 5rem;overflow-x:hidden}
+
+/* ── Hero ── */
+.hero{
+  padding:4rem 0 3rem;
+  border-bottom:1px solid var(--border);
+  margin-bottom:3rem;
+  position:relative;
+  overflow:hidden;
+}
+.hero::after{
+  content:'MISCONFIG';
+  position:absolute;
+  right:-20px;
+  top:50%;
+  transform:translateY(-50%);
+  font-family:var(--serif);
+  font-size:120px;
+  color:var(--border);
+  pointer-events:none;
+  user-select:none;
+  line-height:1;
+  white-space:nowrap;
+}
+.hero-eyebrow{
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--red);
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  margin-bottom:1.2rem;
+  display:flex;
+  align-items:center;
+  gap:.6rem;
+}
+.hero-eyebrow::before{content:'';display:block;width:24px;height:1px;background:var(--red)}
+h1{
+  font-family:var(--serif);
+  font-size:52px;
+  font-weight:400;
+  line-height:1.1;
+  color:var(--text);
+  margin-bottom:1rem;
+  max-width:600px;
+  position:relative;
+  z-index:1;
+}
+h1 em{font-style:italic;color:var(--red)}
+.hero-sub{
+  font-size:14px;
+  color:var(--text2);
+  max-width:540px;
+  line-height:1.7;
+  position:relative;
+  z-index:1;
+}
+.hero-meta{
+  display:flex;
+  gap:2rem;
+  margin-top:2rem;
+  padding-top:1.5rem;
+  border-top:1px solid var(--border);
+  position:relative;
+  z-index:1;
+}
+.hero-meta-item{font-size:11px;font-family:var(--mono);color:var(--text3)}
+.hero-meta-item span{display:block;color:var(--text2);margin-top:2px}
+
+/* ── Stat cards row ── */
+.stats-row{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+  margin-bottom:3.5rem;
+}
+.stat-card{
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:1.1rem 1rem;
+  position:relative;
+  overflow:hidden;
+  transition:border-color .2s;
+}
+.stat-card:hover{border-color:var(--border2)}
+.stat-card::before{
+  content:'';
+  position:absolute;
+  top:0;left:0;right:0;
+  height:2px;
+}
+.stat-red::before{background:var(--red)}
+.stat-amber::before{background:var(--amber)}
+.stat-blue::before{background:var(--blue)}
+.stat-teal::before{background:var(--teal)}
+.stat-num{
+  font-family:var(--mono);
+  font-size:22px;
+  font-weight:500;
+  line-height:1.2;
+  margin-bottom:6px;
+}
+.stat-red .stat-num{color:var(--red)}
+.stat-amber .stat-num{color:var(--amber)}
+.stat-blue .stat-num{color:var(--blue)}
+.stat-teal .stat-num{color:var(--teal)}
+.stat-label{font-size:11px;color:var(--text3);line-height:1.45}
+
+/* ── Sections ── */
+section{margin-bottom:4rem;scroll-margin-top:2rem}
+h2{
+  font-family:var(--serif);
+  font-size:30px;
+  font-weight:400;
+  color:var(--text);
+  margin-bottom:6px;
+  line-height:1.2;
+}
+.section-num{
+  font-family:var(--mono);
+  font-size:9px;
+  color:var(--text3);
+  letter-spacing:.15em;
+  text-transform:uppercase;
+  margin-bottom:.5rem;
+  display:flex;
+  align-items:center;
+  gap:.5rem;
+}
+.section-num::after{content:'';flex:1;height:1px;background:var(--border)}
+p.intro{
+  font-size:14px;
+  color:var(--text2);
+  max-width:640px;
+  margin-bottom:1.5rem;
+  line-height:1.75;
+}
+
+/* ── OWASP table ── */
+.owasp-list{border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:1.2rem 0}
+.owasp-header{
+  display:grid;
+  grid-template-columns:56px 1fr 120px;
+  padding:8px 16px;
+  background:var(--bg3);
+  border-bottom:1px solid var(--border);
+}
+.owasp-header span{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.12em;text-transform:uppercase}
+.owasp-row{
+  display:grid;
+  grid-template-columns:56px 1fr 120px;
+  padding:10px 16px;
+  border-bottom:1px solid var(--border);
+  align-items:center;
+  transition:background .15s;
+}
+.owasp-row:last-child{border-bottom:none}
+.owasp-row:hover{background:var(--bg3)}
+.owasp-row.highlight{background:var(--red-dim);border-left:3px solid var(--red)}
+.owasp-id{font-family:var(--mono);font-size:11px;color:var(--text3);font-weight:500}
+.owasp-row.highlight .owasp-id{color:var(--red)}
+.owasp-name{font-size:13px;color:var(--text)}
+.owasp-row.highlight .owasp-name{font-weight:600;color:var(--text)}
+.change-badge{
+  display:inline-block;
+  font-family:var(--mono);
+  font-size:10px;
+  padding:2px 8px;
+  border-radius:20px;
+  white-space:nowrap;
+}
+.badge-up{background:var(--red-dim);color:#f08080;border:1px solid var(--red-mid)}
+.badge-down{background:var(--green-dim);color:#7ec44a;border:1px solid #2a5010}
+.badge-same{background:var(--bg4);color:var(--text3);border:1px solid var(--border)}
+.badge-new{background:var(--blue-dim);color:#7ab4e8;border:1px solid #1a3a62}
+.note{font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:.6rem;line-height:1.5}
+
+/* ── Category grid ── */
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:1.2rem 0}
+.cat-card{
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:1.1rem 1.2rem;
+  position:relative;
+  overflow:hidden;
+  transition:border-color .2s,transform .15s;
+}
+.cat-card:hover{border-color:var(--border2);transform:translateY(-2px)}
+.cat-card::before{content:'';position:absolute;top:0;left:0;bottom:0;width:3px}
+.cat-cloud::before{background:var(--blue)}
+.cat-iam::before{background:var(--amber)}
+.cat-network::before{background:var(--red)}
+.cat-app::before{background:var(--green)}
+.cat-k8s::before{background:#8b6fd4}
+.cat-crypto::before{background:var(--teal)}
+.cat-logging::before{background:#d47a8b}
+.cat-iac::before{background:#d47a40}
+.cat-title{
+  font-size:13px;
+  font-weight:600;
+  margin-bottom:8px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.sev-pill{
+  font-family:var(--mono);
+  font-size:9px;
+  padding:2px 7px;
+  border-radius:20px;
+  letter-spacing:.06em;
+  font-weight:500;
+}
+.sev-crit{background:var(--red-dim);color:#f08080;border:1px solid var(--red-mid)}
+.sev-high{background:var(--amber-dim);color:#f0b870;border:1px solid #6a4010}
+.sev-med{background:var(--green-dim);color:#7ec44a;border:1px solid #2a5010}
+.cat-items{list-style:none;font-size:12px;color:var(--text2);line-height:1.8;padding-left:.2rem}
+.cat-items li{position:relative;padding-left:1rem}
+.cat-items li::before{content:'→';position:absolute;left:0;color:var(--text3);font-size:10px;top:2px}
+
+/* ── Risk ranking table ── */
+.rank-table{width:100%;border-collapse:collapse;font-size:13px;margin:1.2rem 0;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+.rank-table thead tr{background:var(--bg3)}
+.rank-table th{
+  text-align:left;
+  font-family:var(--mono);
+  font-size:9px;
+  color:var(--text3);
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  padding:10px 14px;
+  border-bottom:1px solid var(--border);
+  font-weight:500;
+}
+.rank-table td{
+  padding:10px 14px;
+  border-bottom:1px solid var(--border);
+  vertical-align:middle;
+}
+.rank-table tr:last-child td{border-bottom:none}
+.rank-table tr{transition:background .15s}
+.rank-table tr:hover td{background:var(--bg3)}
+.rank-num{
+  font-family:var(--mono);
+  font-size:11px;
+  color:var(--text3);
+  font-weight:500;
+}
+.rank-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px}
+.rank-desc{font-size:11px;color:var(--text3);line-height:1.45}
+.risk-score{font-family:var(--mono);font-size:12px;font-weight:500;margin-bottom:4px}
+.risk-bar-bg{background:var(--bg4);height:4px;border-radius:2px;overflow:hidden}
+.risk-bar-fill{height:4px;border-radius:2px;width:0;transition:width 1.2s cubic-bezier(.16,1,.3,1)}
+.fill-crit{background:var(--red)}
+.fill-high{background:var(--amber)}
+.fill-med{background:var(--green)}
+tr.crit-row td:first-child{border-left:2px solid var(--red)}
+tr.high-row td:first-child{border-left:2px solid var(--amber)}
+tr.med-row td:first-child{border-left:2px solid var(--green)}
+
+/* ── Breach list ── */
+.breach-list{border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:1.2rem 0}
+.breach-item{
+  display:flex;
+  gap:16px;
+  padding:14px 16px;
+  border-bottom:1px solid var(--border);
+  transition:background .15s;
+  align-items:flex-start;
+}
+.breach-item:last-child{border-bottom:none}
+.breach-item:hover{background:var(--bg3)}
+.breach-year{
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--text3);
+  min-width:38px;
+  padding-top:3px;
+  font-weight:500;
+}
+.breach-name{font-size:13px;font-weight:600;margin-bottom:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.breach-detail{font-size:12px;color:var(--text2);line-height:1.55}
+.breach-tag{
+  font-family:var(--mono);
+  font-size:9px;
+  padding:2px 7px;
+  border-radius:20px;
+  letter-spacing:.05em;
+}
+
+/* ── Trends ── */
+.trend-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:1.2rem 0}
+.trend-card{
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:1.1rem;
+  transition:border-color .2s;
+}
+.trend-card:hover{border-color:var(--border2)}
+.trend-title{font-size:13px;font-weight:600;margin-bottom:6px;display:flex;align-items:baseline;gap:8px}
+.trend-dir{font-size:16px;line-height:1}
+.trend-desc{font-size:12px;color:var(--text2);line-height:1.6}
+
+/* ── Forecast timeline ── */
+.timeline{margin:1.5rem 0;position:relative;padding-left:30px}
+.timeline::before{
+  content:'';
+  position:absolute;
+  left:6px;top:8px;bottom:8px;
+  width:1px;
+  background:linear-gradient(to bottom,var(--red),var(--border),var(--border));
+}
+.timeline-item{
+  position:relative;
+  margin-bottom:1.8rem;
+  padding-left:20px;
+  animation:fadeInUp .4s both;
+}
+.timeline-item::before{
+  content:'';
+  position:absolute;
+  left:-24px;
+  top:7px;
+  width:8px;height:8px;
+  border-radius:50%;
+  border:1px solid var(--border2);
+  background:var(--bg);
+}
+.timeline-item:first-child::before{background:var(--red);border-color:var(--red)}
+.tl-year{
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--red);
+  letter-spacing:.1em;
+  margin-bottom:4px;
+  font-weight:500;
+}
+.tl-text{font-size:13px;color:var(--text);line-height:1.6;margin-bottom:4px}
+.tl-stat{font-size:11px;color:var(--text3);font-family:var(--mono);line-height:1.5;padding:6px 10px;background:var(--bg3);border-radius:4px;border-left:2px solid var(--border2);margin-top:6px}
+
+/* ── Charts ── */
+.chart-block{margin:1.5rem 0}
+.chart-label{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.8rem}
+.chart-wrap{position:relative;width:100%}
+.chart-note{font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:.5rem;line-height:1.5;font-style:italic}
+
+/* ── Sources ── */
+.sources-block{
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:1.4rem 1.6rem;
+  margin-top:1.5rem;
+}
+.sources-block h3{
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--text3);
+  letter-spacing:.15em;
+  text-transform:uppercase;
+  margin-bottom:.8rem;
+  font-weight:500;
+}
+.source-item{
+  font-size:11px;
+  font-family:var(--mono);
+  color:var(--text3);
+  padding:5px 0;
+  border-bottom:1px solid var(--border);
+  line-height:1.5;
+  display:flex;
+  gap:10px;
+}
+.source-item:last-child{border-bottom:none}
+.source-num{color:var(--text3);min-width:20px;font-size:10px}
+.source-text{color:var(--text2)}
+
+/* ── Footer ── */
+.page-footer{
+  margin-top:3rem;
+  padding:1.5rem 0 0;
+  border-top:1px solid var(--border);
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--text3);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:.5rem;
+}
+.footer-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  background:var(--red-dim);
+  color:#f08080;
+  border:1px solid var(--red-mid);
+  border-radius:20px;
+  padding:3px 10px;
+  font-size:9px;
+  letter-spacing:.1em;
+}
+
+/* ── Divider ── */
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── Animations ── */
+@keyframes fadeInUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.hero-eyebrow{animation:fadeInUp .4s both}
+h1{animation:fadeInUp .4s .06s both}
+.hero-sub{animation:fadeInUp .4s .12s both}
+.hero-meta{animation:fadeInUp .4s .18s both}
+.stats-row{animation:fadeInUp .4s .24s both}
+
+/* ── Print ── */
+@media print{
+  nav{display:none}
+  main{max-width:100%;padding:2rem}
+  .hero::after{display:none}
+  body::before{display:none}
+  .cat-card:hover,.rank-table tr:hover td,.breach-item:hover,.owasp-row:hover{background:inherit;transform:none}
+}
+
+/* ── Responsive ── */
+@media(max-width:900px){
+  .layout{flex-direction:column}
+  nav{width:100%;height:auto;position:static;flex-direction:row;flex-wrap:wrap;border-right:none;border-bottom:1px solid var(--border);padding:1rem}
+  nav ul{display:flex;flex-wrap:wrap;flex-direction:row;gap:4px;padding:0}
+  nav ul li a{padding:4px 8px}
+  .nav-brand,.nav-section-label,.nav-footer{display:none}
+  main{padding:1.5rem 1.2rem 3rem}
+  .stats-row{grid-template-columns:1fr 1fr}
+  .cat-grid,.trend-grid{grid-template-columns:1fr}
+  h1{font-size:36px}
+  .hero::after{display:none}
+  .owasp-header,.owasp-row{grid-template-columns:48px 1fr 90px}
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <nav id="sidebar">
+    <div class="nav-brand">
+      <div class="logo">Security Research</div>
+      <div class="tagline">Misconfiguration<br>Report · March 2026</div>
+    </div>
+    <div class="nav-section-label">Contents</div>
+    <ul>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#owasp">OWASP Top 10:2025</a></li>
+      <li><a href="#taxonomy">Misconfiguration types</a></li>
+      <li><a href="#ranking">Risk ranking</a></li>
+      <li><a href="#breaches">Real-world breaches</a></li>
+      <li><a href="#trends">Key trends</a></li>
+      <li><a href="#forecast">Forecast to 2030</a></li>
+      <li><a href="#charts">Data &amp; projections</a></li>
+      <li><a href="#sources">Sources</a></li>
+    </ul>
+    <div class="nav-footer">
+      Research compiled<br>March 2026<br><br>
+      18 primary sources<br>
+      14 ranked classes<br>
+      8 categories
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main>
+
+    <!-- Hero -->
+    <section class="hero" id="overview">
+      <div class="hero-eyebrow">Security Research Report · 2026</div>
+      <h1>The State of Security <em>Misconfigurations</em></h1>
+      <p class="hero-sub">A categorized, ranked, and forward-looking analysis of misconfiguration-driven security risk across cloud, network, application, and infrastructure environments — with trend projections through 2030.</p>
+      <div class="hero-meta">
+        <div class="hero-meta-item">Coverage<span>Cloud · IAM · Network · App · K8s · IaC · Crypto · Logging</span></div>
+        <div class="hero-meta-item">Data sources<span>OWASP · IBM · Gartner · Tenable · Orca · CISA</span></div>
+        <div class="hero-meta-item">Scope<span>2019–2030 with forward projections</span></div>
+      </div>
+    </section>
+
+    <!-- Key stats -->
+    <div class="stats-row">
+      <div class="stat-card stat-red">
+        <div class="stat-num">95%</div>
+        <div class="stat-label">of cloud security failures stem from misconfigurations (Gartner / SentinelOne, 2025)</div>
+      </div>
+      <div class="stat-card stat-amber">
+        <div class="stat-num">$4.88M</div>
+        <div class="stat-label">average global cost of a data breach in 2025 (IBM Cost of a Data Breach)</div>
+      </div>
+      <div class="stat-card stat-blue">
+        <div class="stat-num">#2</div>
+        <div class="stat-label">Security Misconfiguration rank in OWASP Top 10:2025 — up from #5 in 2021</div>
+      </div>
+      <div class="stat-card stat-teal">
+        <div class="stat-num">43</div>
+        <div class="stat-label">average misconfigurations per cloud account in public cloud environments (2024)</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- OWASP -->
+    <section id="owasp">
+      <div class="section-num">Section 01</div>
+      <h2>OWASP Top 10:2025</h2>
+      <p class="intro">Security Misconfiguration surged three places to #2 in the 2025 edition — the largest upward movement of any category — with 100% of tested applications showing some form of misconfiguration.</p>
+
+      <div class="owasp-list">
+        <div class="owasp-header">
+          <span>ID</span>
+          <span>Category</span>
+          <span>Movement</span>
+        </div>
+        <div class="owasp-row"><span class="owasp-id">A01</span><span class="owasp-name">Broken Access Control (incl. SSRF)</span><span><span class="change-badge badge-same">= held #1</span></span></div>
+        <div class="owasp-row highlight"><span class="owasp-id">A02</span><span class="owasp-name">Security Misconfiguration ← this report</span><span><span class="change-badge badge-up">▲ +3 from #5</span></span></div>
+        <div class="owasp-row"><span class="owasp-id">A03</span><span class="owasp-name">Software Supply Chain Failures</span><span><span class="change-badge badge-new">NEW</span></span></div>
+        <div class="owasp-row"><span class="owasp-id">A04</span><span class="owasp-name">Cryptographic Failures</span><span><span class="change-badge badge-down">▼ from #2</span></span></div>
+        <div class="owasp-row"><span class="owasp-id">A05</span><span class="owasp-name">Injection (SQL, XSS, etc.)</span><span><span class="change-badge badge-down">▼ from #3</span></span></div>
+        <div class="owasp-row"><span class="owasp-id">A06</span><span class="owasp-name">Insecure Design</span><span><span class="change-badge badge-down">▼ from #4</span></span></div>
+        <div class="owasp-row"><span class="owasp-id">A07</span><span class="owasp-name">Authentication Failures</span><span><span class="change-badge badge-same">= held #7</span></span></div>
+        <div class="owasp-row"><span class="owasp-id">A08</span><span class="owasp-name">Software or Data Integrity Failures</span><span><span class="change-badge badge-same">= held #8</span></span></div>
+        <div class="owasp-row"><span class="owasp-id">A09</span><span class="owasp-name">Security Logging &amp; Alerting Failures</span><span><span class="change-badge badge-same">= held #9</span></span></div>
+        <div class="owasp-row"><span class="owasp-id">A10</span><span class="owasp-name">Mishandling of Exceptional Conditions</span><span><span class="change-badge badge-new">NEW</span></span></div>
+      </div>
+      <p class="note">Source: OWASP Top 10:2025 — based on analysis of 589 CWEs across &gt;175,000 CVE records.</p>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Taxonomy -->
+    <section id="taxonomy">
+      <div class="section-num">Section 02</div>
+      <h2>Taxonomy of misconfiguration types</h2>
+      <p class="intro">Eight primary categories cover the full landscape of security-relevant misconfigurations across modern environments — from cloud storage to container orchestration to cryptographic implementations.</p>
+
+      <div class="cat-grid">
+        <div class="cat-card cat-cloud">
+          <div class="cat-title">Cloud storage &amp; compute <span class="sev-pill sev-crit">Critical</span></div>
+          <ul class="cat-items">
+            <li>Publicly accessible S3 / Blob / GCS buckets</li>
+            <li>Unauthenticated cloud databases (MongoDB, Elasticsearch)</li>
+            <li>Unencrypted storage volumes</li>
+            <li>Misconfigured cloud-function permissions</li>
+            <li>Forgotten test / dev environments exposed to internet</li>
+            <li>No object-level access logging or versioning</li>
+          </ul>
+        </div>
+        <div class="cat-card cat-iam">
+          <div class="cat-title">Identity &amp; Access Management <span class="sev-pill sev-crit">Critical</span></div>
+          <ul class="cat-items">
+            <li>Overprivileged roles (wildcard permissions, AdministratorAccess)</li>
+            <li>Static / long-lived API keys and credentials</li>
+            <li>Default accounts left enabled with default passwords</li>
+            <li>MFA not enforced for privileged / root accounts</li>
+            <li>Stale accounts and orphaned service accounts</li>
+            <li>Insecure CORS and OIDC configurations</li>
+          </ul>
+        </div>
+        <div class="cat-card cat-network">
+          <div class="cat-title">Network &amp; firewall <span class="sev-pill sev-crit">Critical</span></div>
+          <ul class="cat-items">
+            <li>Overly permissive security group rules (0.0.0.0/0 on any port)</li>
+            <li>Misconfigured VPCs / open VPC peering connections</li>
+            <li>Unencrypted inter-service traffic within trusted perimeters</li>
+            <li>Exposed management interfaces (RDP/SSH/WinRM to internet)</li>
+            <li>Missing network segmentation / micro-segmentation</li>
+            <li>Weak or default firewall rulesets on perimeter devices</li>
+          </ul>
+        </div>
+        <div class="cat-card cat-app">
+          <div class="cat-title">Application &amp; web server <span class="sev-pill sev-high">High</span></div>
+          <ul class="cat-items">
+            <li>Debug mode enabled in production builds</li>
+            <li>Verbose error messages exposing stack traces / paths</li>
+            <li>Missing or incorrect HTTP security headers (CSP, HSTS, etc.)</li>
+            <li>Default credentials on web frameworks / CMS platforms</li>
+            <li>Exposed admin endpoints (/admin, /actuator, /phpinfo)</li>
+            <li>Secrets committed to source code or written to logs</li>
+          </ul>
+        </div>
+        <div class="cat-card cat-k8s">
+          <div class="cat-title">Containers &amp; Kubernetes <span class="sev-pill sev-high">High</span></div>
+          <ul class="cat-items">
+            <li>RBAC misconfiguration (cluster-admin on default service account)</li>
+            <li>Kubernetes API server exposed publicly without authentication</li>
+            <li>Privileged containers running as root</li>
+            <li>Insecure container images / unscanned registries</li>
+            <li>Missing pod security policies / admission controls</li>
+            <li>Secrets stored in environment variables or ConfigMaps</li>
+          </ul>
+        </div>
+        <div class="cat-card cat-crypto">
+          <div class="cat-title">Cryptography &amp; TLS <span class="sev-pill sev-high">High</span></div>
+          <ul class="cat-items">
+            <li>Weak or deprecated protocols (TLS 1.0/1.1, SSLv3, RC4)</li>
+            <li>Self-signed or expired certificates in production</li>
+            <li>Improper key storage and rotation cadence</li>
+            <li>Hardcoded encryption keys in source code</li>
+            <li>Unencrypted data at rest or in transit</li>
+            <li>Predictable IVs / weak random number generation</li>
+          </ul>
+        </div>
+        <div class="cat-card cat-logging">
+          <div class="cat-title">Logging &amp; monitoring <span class="sev-pill sev-med">Medium</span></div>
+          <ul class="cat-items">
+            <li>Audit logging disabled or not forwarded to SIEM</li>
+            <li>Log retention too short for forensic use (&lt;90 days)</li>
+            <li>Sensitive data (PII, tokens) written to logs</li>
+            <li>No alerting on privilege escalation or anomalous events</li>
+            <li>Unmonitored cloud assets (avg. 115 vulnerabilities each)</li>
+          </ul>
+        </div>
+        <div class="cat-card cat-iac">
+          <div class="cat-title">Infrastructure as Code <span class="sev-pill sev-high">High</span></div>
+          <ul class="cat-items">
+            <li>Terraform / CloudFormation resources public by default</li>
+            <li>Hardcoded secrets in IaC templates or state files</li>
+            <li>Overly permissive IAM in IaC definitions</li>
+            <li>No pre-deployment policy scanning (OPA / Checkov / tfsec)</li>
+            <li>Misconfigured CI/CD pipeline permissions</li>
+            <li>Build environment misconfigurations enabling supply chain attacks</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Risk ranking -->
+    <section id="ranking">
+      <div class="section-num">Section 03</div>
+      <h2>Risk ranking</h2>
+      <p class="intro">Ranked using a composite of breach frequency, severity of data impact, dwell time before detection, and remediation difficulty. Risk scores are indicative on a 1–100 scale; bars animate on scroll.</p>
+
+      <table class="rank-table" id="rankTable">
+        <thead>
+          <tr>
+            <th width="32">#</th>
+            <th>Misconfiguration</th>
+            <th width="130">Risk score</th>
+            <th width="100">Primary impact</th>
+            <th width="80">Severity</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="crit-row" data-score="97">
+            <td class="rank-num">01</td>
+            <td><div class="rank-name">Open cloud storage buckets</div><div class="rank-desc">Mass data exposure; discovered by automated scanners within hours of misconfiguration</div></td>
+            <td><div class="risk-score" style="color:var(--red)">97/100</div><div class="risk-bar-bg"><div class="risk-bar-fill fill-crit" data-w="97"></div></div></td>
+            <td><span class="sev-pill sev-crit">Data loss</span></td>
+            <td><span class="sev-pill sev-crit">Critical</span></td>
+          </tr>
+          <tr class="crit-row" data-score="95">
+            <td class="rank-num">02</td>
+            <td><div class="rank-name">IAM over-privilege / wildcard permissions</div><div class="rank-desc">Full account / environment compromise; credential theft escalation path</div></td>
+            <td><div class="risk-score" style="color:var(--red)">95/100</div><div class="risk-bar-bg"><div class="risk-bar-fill fill-crit" data-w="95"></div></div></td>
+            <td><span class="sev-pill sev-crit">Compromise</span></td>
+            <td><span class="sev-pill sev-crit">Critical</span></td>
+          </tr>
+          <tr class="crit-row" data-score="93">
+            <td class="rank-num">03</td>
+            <td><div class="rank-name">Default or hardcoded credentials</div><div class="rank-desc">Trivial initial access; targeted by automated credential-stuffing tools 24/7</div></td>
+            <td><div class="risk-score" style="color:var(--red)">93/100</div><div class="risk-bar-bg"><div class="risk-bar-fill fill-crit" data-w="93"></div></div></td>
+            <td><span class="sev-pill sev-crit">Compromise</span></td>
+            <td><span class="sev-pill sev-crit">Critical</span></td>
+          </tr>
+          <tr class="crit-row" data-score="90">
+            <td class="rank-num">04</td>
+            <td><div class="rank-name">Exposed management interfaces (RDP/SSH)</div><div class="rank-desc">Primary ransomware entry vector; brute-force and credential stuffing at scale</div></td>
+            <td><div class="risk-score" style="color:var(--red)">90/100</div><div class="risk-bar-bg"><div class="risk-bar-fill fill-crit" data-w="90"></div></div></td>
+            <td><span class="sev-pill sev-crit">Ransomware</span></td>
+            <td><span class="sev-pill sev-crit">Critical</span></td>
+          </tr>
+          <tr class="crit-row" data-score="88">
+            <td class="rank-num">05</td>
+            <td><div class="rank-name">Kubernetes RBAC misconfiguration</div><div class="rank-desc">Full cluster takeover from a single compromised pod; 45% of K8s incidents</div></td>
+            <td><div class="risk-score" style="color:var(--red)">88/100</div><div class="risk-bar-bg"><div class="risk-bar-fill fill-crit" data-w="88"></div></div></td>
+            <td><span class="sev-pill sev-crit">Compromise</span></td>
+            <td><span class="sev-pill sev-crit">Critical</span></td>
+          </tr>
+          <tr class="crit-row" data-score="85">
+            <td class="rank-num">06</td>
+            <td><div class="rank-name">Missing network segmentation / open VPC rules</div><div class="rank-desc">Lateral movement enabled; blast radius amplification across services</div></td>
+            <td><div class="risk-score" style="color:var(--red)">85/100</div><div class="risk-bar-bg"><div class="risk-bar-fill fill-crit" data-w="85"></div></div></td>
+            <td><span class="sev-pill sev-crit">Lateral move</span></td>
+            <td><span class="sev-pill sev-crit">Critical</span></td>
+          </tr>
+          <tr class="crit-row" data-score="84">
+            <td class="rank-num">07</td>
+            <td><div class="rank-name">Secrets in source code / IaC templates</div><div class="rank-desc">Credential exposure via public repositories; supply chain pivot point</div></td>
+            <td><div class="risk-score" style="color:var(--red)">84/100</div><div class="risk-bar-bg"><div class="risk-bar-fill fill-crit" data-w="84"></div></div></td>
+            <td><span class="sev-pill sev-crit">Credential leak</span></td>
+            <td><span class="sev-pill sev-crit">Critical</span></td>
+          </tr>
+          <tr class="high-row" data-score="80">
+            <td class="rank-num">08</td>
+            <td><div class="rank-name">Unencrypted data at rest / in transit</div><div class="rank-desc">Data theft without detection; GDPR / HIPAA / PCI compliance violations</div></td>
+            <td><div class="risk-score" style="color:var(--amber)">80/100</div><div class="risk-bar-bg"><div class="risk-bar-fill fill-high" data-w="80"></div></div></td>
+            <td><span class="sev-pill sev-high">Data theft</span></td>
+            <td><span class="sev-pill sev-high">High</span></td>
+          </tr>
+          <tr class="high-row" data-score="75">
+            <td class="rank-num">09</td>
+            <td><div class="rank-name">Debug mode / verbose errors in production</div><div class="rank-desc">Information disclosure; path traversal enables targeted, precision attacks</div></td>
+            <td><div class="risk-score" style="color:var(--amber)">75/100</div><div class="risk-bar-bg"><div class="risk-bar-fill fill-high" data-w="75"></div></div></td>
+            <td><span class="sev-pill sev-high">Info leakage</span></td>
+            <td><span class="sev-pill sev-high">High</span></td>
+          </tr>
+          <tr class="high-row" data-score="68">
+            <td class="rank-num">10</td>
+            <td><div class="rank-name">Missing HTTP security headers</div><div class="rank-desc">XSS, clickjacking, MIME sniffing; user-level exploitation without server access</div></td>
+            <td><div class="risk-score" style="color:var(--amber)">68/100</div><div class="risk-bar-bg"><div class="risk-bar-fill fill-high" data-w="68"></div></div></td>
+            <td><span class="sev-pill sev-high">Client attack</span></td>
+            <td><span class="sev-pill sev-high">High</span></td>
+          </tr>
+          <tr class="high-row" data-score="65">
+            <td class="rank-num">11</td>
+            <td><div class="rank-name">Weak TLS / deprecated cipher suites</div><div class="rank-desc">Man-in-the-middle attacks; regulatory non-compliance with PCI-DSS 4.0</div></td>
+            <td><div class="risk-score" style="color:var(--amber)">65/100</div><div class="risk-bar-bg"><div class="risk-bar-fill fill-high" data-w="65"></div></div></td>
+            <td><span class="sev-pill sev-high">MitM / Decrypt</span></td>
+            <td><span class="sev-pill sev-high">High</span></td>
+          </tr>
+          <tr class="high-row" data-score="60">
+            <td class="rank-num">12</td>
+            <td><div class="rank-name">Logging &amp; alerting gaps</div><div class="rank-desc">Average dwell time extends to 277 days; incident response severely hampered</div></td>
+            <td><div class="risk-score" style="color:var(--amber)">60/100</div><div class="risk-bar-bg"><div class="risk-bar-fill fill-high" data-w="60"></div></div></td>
+            <td><span class="sev-pill sev-high">Detection failure</span></td>
+            <td><span class="sev-pill sev-high">High</span></td>
+          </tr>
+          <tr class="high-row" data-score="55">
+            <td class="rank-num">13</td>
+            <td><div class="rank-name">Overly permissive CORS policies</div><div class="rank-desc">Cross-origin data theft; session hijacking without phishing</div></td>
+            <td><div class="risk-score" style="color:var(--amber)">55/100</div><div class="risk-bar-bg"><div class="risk-bar-fill fill-high" data-w="55"></div></div></td>
+            <td><span class="sev-pill sev-high">Data theft</span></td>
+            <td><span class="sev-pill sev-high">High</span></td>
+          </tr>
+          <tr class="med-row" data-score="50">
+            <td class="rank-num">14</td>
+            <td><div class="rank-name">Unmonitored / unpatched cloud assets</div><div class="rank-desc">32% of assets untracked in typical enterprise; avg. 115 vulnerabilities each</div></td>
+            <td><div class="risk-score" style="color:var(--green)">50/100</div><div class="risk-bar-bg"><div class="risk-bar-fill fill-med" data-w="50"></div></div></td>
+            <td><span class="sev-pill sev-med">Attack surface</span></td>
+            <td><span class="sev-pill sev-med">Medium</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Breaches -->
+    <section id="breaches">
+      <div class="section-num">Section 04</div>
+      <h2>Notable real-world breaches</h2>
+      <p class="intro">Misconfiguration as confirmed or primary contributing root cause. Cases span 2019–2024 and represent a cross-section of industries, environments, and misconfiguration classes.</p>
+
+      <div class="breach-list">
+        <div class="breach-item">
+          <span class="breach-year">2024</span>
+          <div>
+            <div class="breach-name">Change Healthcare <span class="breach-tag" style="background:var(--red-dim);color:#f08080;border:1px solid var(--red-mid)">IAM</span></div>
+            <div class="breach-detail">Ransomware attack enabled by misconfigurations affected over 100 million patient records — the largest healthcare breach in US history. UnitedHealth Group reported costs exceeding $1.6 billion in remediation and claims by mid-2024.</div>
+          </div>
+        </div>
+        <div class="breach-item">
+          <span class="breach-year">2024</span>
+          <div>
+            <div class="breach-name">BeyondTrust SaaS <span class="breach-tag" style="background:var(--amber-dim);color:#f0b870;border:1px solid #6a4010">API key</span></div>
+            <div class="breach-detail">An overprivileged static API key combined with CVE-2024-12356 (CVSS 9.8) enabled attackers to compromise customer environments. The key had far broader scope than required and had not been rotated — a classic combination of misconfiguration and unpatched vulnerability.</div>
+          </div>
+        </div>
+        <div class="breach-item">
+          <span class="breach-year">2024</span>
+          <div>
+            <div class="breach-name">Dell — 49M records <span class="breach-tag" style="background:var(--amber-dim);color:#f0b870;border:1px solid #6a4010">Credential / Rate limit</span></div>
+            <div class="breach-detail">Brute-force attack exposed 49 million customer records via insufficiently rate-limited and poorly network-segmented API endpoints. The attacker later advertised the data on hacking forums for $500k.</div>
+          </div>
+        </div>
+        <div class="breach-item">
+          <span class="breach-year">2024</span>
+          <div>
+            <div class="breach-name">McLaren Health Care <span class="breach-tag" style="background:var(--red-dim);color:#f08080;border:1px solid var(--red-mid)">Network segmentation</span></div>
+            <div class="breach-detail">ALPHV/BlackCat ransomware maintained unauthorized access for several weeks before discovery, affecting 743,131 individuals' records. Post-incident analysis pointed to insufficient lateral movement controls between network segments.</div>
+          </div>
+        </div>
+        <div class="breach-item">
+          <span class="breach-year">2023</span>
+          <div>
+            <div class="breach-name">Toyota — 260K customers <span class="breach-tag" style="background:var(--blue-dim);color:#7ab4e8;border:1px solid #1a3a62">Cloud storage</span></div>
+            <div class="breach-detail">A misconfigured cloud environment exposed customer location data for 260,000 individuals. Critically, the error went undetected for over 8 years (2015–2023) before disclosure — underscoring the detection gap that logging failures create.</div>
+          </div>
+        </div>
+        <div class="breach-item">
+          <span class="breach-year">2023</span>
+          <div>
+            <div class="breach-name">Real Estate Wealth Network — 1.5B records <span class="breach-tag" style="background:var(--blue-dim);color:#7ab4e8;border:1px solid #1a3a62">Open bucket</span></div>
+            <div class="breach-detail">The largest single exposure of 2023: an unsecured cloud database containing 1.5 billion records was reachable without any authentication. Discovered by a security researcher; no credential was required to access the data.</div>
+          </div>
+        </div>
+        <div class="breach-item">
+          <span class="breach-year">2022</span>
+          <div>
+            <div class="breach-name">Microsoft Power Apps — 38M records <span class="breach-tag" style="background:var(--blue-dim);color:#7ab4e8;border:1px solid #1a3a62">Default config</span></div>
+            <div class="breach-detail">Thousands of organizations (including airlines, health systems, and government agencies) inadvertently exposed 38 million records due to Power Apps portals defaulting to public access. The root cause was a platform default, not intentional configuration — illustrating the risk of insecure defaults.</div>
+          </div>
+        </div>
+        <div class="breach-item">
+          <span class="breach-year">2019</span>
+          <div>
+            <div class="breach-name">Capital One — 100M+ records <span class="breach-tag" style="background:var(--amber-dim);color:#f0b870;border:1px solid #6a4010">WAF misconfiguration</span></div>
+            <div class="breach-detail">A misconfigured Web Application Firewall on AWS allowed SSRF to reach the EC2 instance metadata service, exposing temporary IAM credentials. The attacker then used those credentials to access 106 million customer records — a textbook misconfiguration chain: WAF → SSRF → metadata → IAM → S3.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Trends -->
+    <section id="trends">
+      <div class="section-num">Section 05</div>
+      <h2>Key trends shaping the landscape</h2>
+      <p class="intro">Six macro-trends are accelerating the frequency and severity of misconfiguration-driven incidents through 2025 and beyond.</p>
+
+      <div class="trend-grid">
+        <div class="trend-card">
+          <div class="trend-title"><span class="trend-dir" style="color:var(--red)">↑</span>AI-accelerated exploitation</div>
+          <div class="trend-desc">AI tools now scan and exploit misconfigurations faster than patch cycles. Misconfigured Kubernetes dashboards and open buckets are discovered and exploited within hours of exposure. Attack frequency rose 47% year-on-year to 1,925 attacks/week as of Q1 2025. The gap between exposure and exploitation is collapsing.</div>
+        </div>
+        <div class="trend-card">
+          <div class="trend-title"><span class="trend-dir" style="color:var(--red)">↑</span>Identity becoming the primary perimeter</div>
+          <div class="trend-desc">IAM misconfigurations appear in nearly 38% of breaches. Compromised identities account for over 70% of cloud breaches. Non-human identities (service accounts, API keys, OAuth tokens) are the fastest-growing attack surface — projected to outnumber human identities by 50:1 by 2027.</div>
+        </div>
+        <div class="trend-card">
+          <div class="trend-title"><span class="trend-dir" style="color:var(--red)">↑</span>Multi-cloud complexity multiplier</div>
+          <div class="trend-desc">89% of organizations use multiple cloud providers, each with distinct IAM and network models. A single misconfiguration in Azure can undermine AWS protections when workloads are interconnected. 69% of teams struggle to maintain consistent security controls across providers — the "lowest common denominator" problem.</div>
+        </div>
+        <div class="trend-card">
+          <div class="trend-title"><span class="trend-dir" style="color:var(--red)">↑</span>Supply chain as a misconfiguration vector</div>
+          <div class="trend-desc">Supply chain attacks averaged 13/month in early 2024, rising to 41 incidents in October 2025 alone — over 30% higher than any prior month. Build environment misconfigurations enable mass compromise via poisoned packages (npm, PyPI). CI/CD permissions are the new firewall.</div>
+        </div>
+        <div class="trend-card">
+          <div class="trend-title"><span class="trend-dir" style="color:var(--amber)">↑</span>IaC drift and policy debt</div>
+          <div class="trend-desc">Modern environments use Terraform and CloudFormation, but IaC misconfigurations can expose entire databases instantly at deploy time. Only 40% of teams enforce security scanning during the implementation phase. Configuration drift between deployed state and declared state creates invisible risk.</div>
+        </div>
+        <div class="trend-card">
+          <div class="trend-title"><span class="trend-dir" style="color:var(--text3)">→</span>Skills gap persists through 2028</div>
+          <div class="trend-desc">45% of organizations lack qualified staff to manage multi-cloud security. Cloud security is the most in-demand yet hardest-to-fill role (Fortinet ISC2, 2024). Human error accounts for 82% of cloud misconfigurations — a rate unlikely to drop quickly without near-full automation adoption.</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Forecast -->
+    <section id="forecast">
+      <div class="section-num">Section 06</div>
+      <h2>Projections toward 2030</h2>
+      <p class="intro">Forecasts synthesized from Gartner, SentinelOne, Sprinto, and major market research firms. Statistical projections are estimates — treat as directional, not deterministic.</p>
+
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="tl-year">2025 — Baseline</div>
+          <div class="tl-text">95% of cloud security failures attributable to customer-side misconfigurations. Average of 43 misconfigurations per cloud account. Cloud security market at ~$40B globally.</div>
+          <div class="tl-stat">IAM market: $36.96B · Average breach cost: $4.88M · 80% of companies had at least one cloud breach in the prior 12 months.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-year">2026</div>
+          <div class="tl-text">AI-driven phishing expected to exceed 42% of all global intrusions. 71% of business leaders report high rise in attack frequency year-over-year. Zero-trust cloud security market projected at $60B by 2027. Identity-first security models begin reaching enterprise mainstream.</div>
+          <div class="tl-stat">Non-human identity management tools reach broad adoption; CISA BOD 25-01 class mandates drive federal cloud hygiene improvements.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-year">2027</div>
+          <div class="tl-text">Industry-specific cloud platform adoption rises from &lt;15% (2023) to over 70%, introducing domain-specific misconfiguration patterns not covered by generic tooling. CSPM market projected at $15.6B — automated remediation begins displacing manual review.</div>
+          <div class="tl-stat">Policy-as-code and automated misconfiguration remediation become baseline requirements for regulated industries seeking cyber insurance.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-year">2028–2029</div>
+          <div class="tl-text">Cloud database security projected to grow from $10.13B to $50B by 2029. IAM market CAGR of 16.6% drives broad privilege-management tooling adoption. Agentic AI security tools begin automated remediation at machine speed — human-in-the-loop drops to exception handling only for regulated sectors.</div>
+          <div class="tl-stat">91% of orgs currently harbor vulnerabilities over 10 years old; regulatory pressure from the EU Cyber Resilience Act accelerates patch velocity.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-year">2030 — Horizon</div>
+          <div class="tl-text">Cloud security market projected at $148.3B (from $20.54B in 2022). Misconfiguration rate unlikely to reach zero — complexity growth outpaces automation gains. Regulatory fines for misconfiguration-driven breaches expected to increase substantially as courts establish precedent. Zero-trust and CNAPP adoption become table stakes for cyber insurance qualification — organizations without them face coverage exclusions.</div>
+          <div class="tl-stat">Human error remains the dominant root cause unless organizations achieve near-full IaC + policy-as-code adoption across all environments.</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Charts -->
+    <section id="charts">
+      <div class="section-num">Section 07</div>
+      <h2>Data &amp; projections</h2>
+      <p class="intro">Visualizing the historical trend in breach cost and cloud security market growth, with projections extrapolated to 2030.</p>
+
+      <div class="chart-block">
+        <div class="chart-label">Average cost of a data breach (USD millions) — IBM Cost of a Data Breach</div>
+        <div class="chart-wrap" style="height:260px">
+          <canvas id="costChart"></canvas>
+        </div>
+        <p class="chart-note">Dotted line = projection extrapolated from 2019–2025 compound trend. Actual values may vary. Source: IBM Cost of a Data Breach Reports (2019–2025).</p>
+      </div>
+
+      <div class="chart-block" style="margin-top:2.5rem">
+        <div class="chart-label">Cloud security market size (USD billions) — forecast to 2032</div>
+        <div class="chart-wrap" style="height:240px">
+          <canvas id="marketChart"></canvas>
+        </div>
+        <p class="chart-note">Lighter bars = projected values. Source: Statista, Grand View Research, SentinelOne market analysis 2025.</p>
+      </div>
+
+      <div class="chart-block" style="margin-top:2.5rem">
+        <div class="chart-label">Risk score distribution across 14 ranked misconfiguration classes</div>
+        <div class="chart-wrap" style="height:320px">
+          <canvas id="riskChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Sources -->
+    <section id="sources">
+      <div class="section-num">Section 08</div>
+      <h2>Sources &amp; references</h2>
+      <p class="intro">All statistics, rankings, and projections are derived from the following primary and secondary sources. Where multiple sources report conflicting figures, the more conservative or more recent estimate was used.</p>
+
+      <div class="sources-block">
+        <h3>References (18 sources)</h3>
+        <div class="source-item"><span class="source-num">01</span><span class="source-text">SentinelOne — Cloud Security Statistics 2026 · sentinelone.com/blog/cloud-security-statistics/</span></div>
+        <div class="source-item"><span class="source-num">02</span><span class="source-text">OWASP Top 10:2025 — owasp.org/Top10/2025/</span></div>
+        <div class="source-item"><span class="source-num">03</span><span class="source-text">IBM Cost of a Data Breach Report 2025 — ibm.com/reports/data-breach</span></div>
+        <div class="source-item"><span class="source-num">04</span><span class="source-text">Gartner — "Through 2025, 99% of cloud security failures will be the customer's fault" (Gartner prediction research)</span></div>
+        <div class="source-item"><span class="source-num">05</span><span class="source-text">Tenable 2025 Cloud Security Risk Report — tenable.com/blog/cloud-security-risk-report</span></div>
+        <div class="source-item"><span class="source-num">06</span><span class="source-text">Sprinto — Cloud Security Statistics 2025 · sprinto.com/blog/cloud-security-statistics/</span></div>
+        <div class="source-item"><span class="source-num">07</span><span class="source-text">RSA Conference 2025 — Neil Carpenter, Sean Metcalf sessions on cloud identity &amp; misconfiguration</span></div>
+        <div class="source-item"><span class="source-num">08</span><span class="source-text">Exabeam — 61 Cloud Security Statistics 2025 · exabeam.com/explainers/cloud-siem/cloud-security-statistics/</span></div>
+        <div class="source-item"><span class="source-num">09</span><span class="source-text">Fidelis Security — Cloud Misconfiguration Report 2025 · fidelissecurity.com</span></div>
+        <div class="source-item"><span class="source-num">10</span><span class="source-text">IntelligenceX Blog — Security Misconfiguration A02:2025 · blog.intelligencex.org</span></div>
+        <div class="source-item"><span class="source-num">11</span><span class="source-text">RSAC Library — Cloud Misconfigurations: Still the Biggest Threat in 2025 · rsaconference.com/library</span></div>
+        <div class="source-item"><span class="source-num">12</span><span class="source-text">StrongDM — Cloud Security Statistics 2025 · strongdm.com/blog/cloud-security-statistics</span></div>
+        <div class="source-item"><span class="source-num">13</span><span class="source-text">Medium / InstaTunnel — Security Misconfiguration: The 90% Problem (2025)</span></div>
+        <div class="source-item"><span class="source-num">14</span><span class="source-text">CISA Binding Operational Directive 25-01 (December 2024) — federal cloud misconfiguration mandate · cisa.gov/bod/25-01</span></div>
+        <div class="source-item"><span class="source-num">15</span><span class="source-text">Spacelift — 100+ Cloud Security Statistics for 2026 · spacelift.io/blog/cloud-security-statistics</span></div>
+        <div class="source-item"><span class="source-num">16</span><span class="source-text">GitLab — OWASP Top 10 2025: What's Changed · about.gitlab.com/blog/owasp-top-10-2025/</span></div>
+        <div class="source-item"><span class="source-num">17</span><span class="source-text">Orca Security — OWASP Top 10 2025 Key Changes · orca.security/resources/owasp-top-10-2025</span></div>
+        <div class="source-item"><span class="source-num">18</span><span class="source-text">CNCF / Kubernetes Security — Misconfigurations account for 45% of K8s incidents (2025 survey) · cncf.io</span></div>
+      </div>
+    </section>
+
+    <footer class="page-footer">
+      <span>Security Misconfiguration Research Report · March 2026</span>
+      <span class="footer-badge">Research document · For informational use</span>
+      <span>18 sources · 14 ranked classes · 8 categories</span>
+    </footer>
+
+  </main>
+</div>
+
+<script>
+// ── Risk bar animation ──
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if(entry.isIntersecting){
+      entry.target.querySelectorAll('.risk-bar-fill').forEach(bar => {
+        const w = bar.getAttribute('data-w');
+        bar.style.width = w + '%';
+      });
+      observer.unobserve(entry.target);
+    }
+  });
+},{threshold:.1});
+document.querySelectorAll('#rankTable tbody tr').forEach(row=>observer.observe(row));
+
+// ── Active nav tracking ──
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('nav a');
+const sectionObserver = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      navLinks.forEach(a=>{
+        a.classList.toggle('active',a.getAttribute('href')==='#'+e.target.id);
+      });
+    }
+  });
+},{rootMargin:'-30% 0px -60% 0px'});
+sections.forEach(s=>sectionObserver.observe(s));
+
+// ── Charts ──
+const monoFont = "'IBM Plex Mono', monospace";
+const gridColor = 'rgba(255,255,255,0.06)';
+const tickColor = '#5a5856';
+
+// Breach cost chart
+new Chart(document.getElementById('costChart'),{
+  type:'line',
+  data:{
+    labels:['2019','2020','2021','2022','2023','2024','2025','2026e','2027e','2028e','2029e','2030e'],
+    datasets:[{
+      label:'Avg breach cost ($M)',
+      data:[3.92,3.86,4.24,4.35,4.45,4.64,4.88,5.10,5.35,5.65,5.90,6.20],
+      borderColor:'#e24b4a',
+      backgroundColor:'rgba(226,75,74,0.07)',
+      borderWidth:2,
+      pointBackgroundColor:ctx=>ctx.dataIndex<7?'#e24b4a':'transparent',
+      pointBorderColor:'#e24b4a',
+      pointRadius:ctx=>ctx.dataIndex<7?4:3,
+      segment:{borderDash:ctx=>ctx.p0DataIndex>=6?[5,4]:undefined},
+      fill:true,
+      tension:0.3
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{
+        backgroundColor:'#161618',borderColor:'#2a2a2e',borderWidth:1,
+        titleColor:'#e8e6e0',bodyColor:'#9a9891',
+        titleFont:{family:monoFont,size:11},
+        bodyFont:{family:monoFont,size:11},
+        callbacks:{label:ctx=>'$'+ctx.parsed.y.toFixed(2)+'M'}
+      }
+    },
+    scales:{
+      x:{grid:{color:gridColor},ticks:{color:tickColor,font:{family:monoFont,size:10}}},
+      y:{
+        grid:{color:gridColor},
+        ticks:{color:tickColor,font:{family:monoFont,size:10},callback:v=>'$'+v+'M'},
+        min:3.5,max:7
+      }
+    }
+  }
+});
+
+// Market growth chart
+new Chart(document.getElementById('marketChart'),{
+  type:'bar',
+  data:{
+    labels:['2022','2023','2024e','2025e','2026e','2027e','2028e','2029e','2030e'],
+    datasets:[{
+      label:'Market size ($B)',
+      data:[20.54,26,33,40,52,65,85,108,130],
+      backgroundColor:ctx=>ctx.dataIndex<2?'#185FA5':ctx.dataIndex<3?'rgba(74,143,212,0.6)':'rgba(74,143,212,0.3)',
+      borderColor:'#4a8fd4',
+      borderWidth:1,
+      borderRadius:4
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{
+        backgroundColor:'#161618',borderColor:'#2a2a2e',borderWidth:1,
+        titleColor:'#e8e6e0',bodyColor:'#9a9891',
+        titleFont:{family:monoFont,size:11},bodyFont:{family:monoFont,size:11},
+        callbacks:{label:ctx=>'$'+ctx.parsed.y+'B'}
+      }
+    },
+    scales:{
+      x:{grid:{color:gridColor},ticks:{color:tickColor,font:{family:monoFont,size:10}}},
+      y:{grid:{color:gridColor},ticks:{color:tickColor,font:{family:monoFont,size:10},callback:v=>'$'+v+'B'}}
+    }
+  }
+});
+
+// Risk distribution horizontal bar chart
+new Chart(document.getElementById('riskChart'),{
+  type:'bar',
+  data:{
+    labels:[
+      'Open cloud storage','IAM over-privilege','Default credentials',
+      'Exposed mgmt interfaces','K8s RBAC misconfig','Open VPC / no segmentation',
+      'Secrets in source/IaC','Unencrypted data','Debug mode / verbose errors',
+      'Missing HTTP headers','Weak TLS / ciphers','Logging gaps',
+      'Permissive CORS','Unmonitored assets'
+    ],
+    datasets:[{
+      data:[97,95,93,90,88,85,84,80,75,68,65,60,55,50],
+      backgroundColor:ctx=>{
+        const v=ctx.parsed.x;
+        return v>=84?'rgba(226,75,74,0.75)':v>=60?'rgba(239,159,39,0.7)':'rgba(99,153,34,0.7)';
+      },
+      borderColor:ctx=>{
+        const v=ctx.parsed.x;
+        return v>=84?'#e24b4a':v>=60?'#ef9f27':'#639922';
+      },
+      borderWidth:1,
+      borderRadius:3
+    }]
+  },
+  options:{
+    indexAxis:'y',
+    responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{
+        backgroundColor:'#161618',borderColor:'#2a2a2e',borderWidth:1,
+        titleColor:'#e8e6e0',bodyColor:'#9a9891',
+        titleFont:{family:monoFont,size:11},bodyFont:{family:monoFont,size:11},
+        callbacks:{label:ctx=>'Risk score: '+ctx.parsed.x+'/100'}
+      }
+    },
+    scales:{
+      x:{
+        grid:{color:gridColor},
+        ticks:{color:tickColor,font:{family:monoFont,size:10}},
+        min:0,max:100
+      },
+      y:{
+        grid:{display:false},
+        ticks:{color:'#9a9891',font:{family:monoFont,size:10}}
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>
